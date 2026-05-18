@@ -1,0 +1,106 @@
+# tests/conftest.py
+import uuid
+from pathlib import Path
+
+import pytest
+import pytest_asyncio
+from alembic import command
+from alembic.config import Config
+from httpx import AsyncClient, ASGITransport
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+
+from src.auth.service import hash_password
+from src.main import app
+from src.rbac.models import Role, UserRole
+from src.tenants.models import Tenant
+from src.users.models import User
+
+
+@pytest.fixture(scope="session")
+def postgres_container():
+    from testcontainers.postgres import PostgresContainer
+    with PostgresContainer("postgres:16-alpine") as postgres:
+        yield postgres
+
+
+@pytest_asyncio.fixture(scope="session")
+async def db_engine(postgres_container):
+    sync_url = postgres_container.get_connection_url()
+    async_url = sync_url.replace("postgresql+psycopg2", "postgresql+asyncpg")
+
+    # Run Alembic migrations via sync URL (absolute path for robustness)
+    alembic_ini = Path(__file__).parent.parent / "alembic.ini"
+    alembic_cfg = Config(str(alembic_ini))
+    alembic_cfg.set_main_option("sqlalchemy.url", sync_url)
+    command.upgrade(alembic_cfg, "head")
+
+    engine = create_async_engine(async_url)
+    yield engine
+    await engine.dispose()
+
+
+@pytest_asyncio.fixture
+async def db_session(db_engine) -> AsyncSession:
+    """Function-scoped session with rollback for direct service testing."""
+    factory = async_sessionmaker(db_engine, expire_on_commit=False)
+    async with factory() as session:
+        yield session
+        await session.rollback()
+
+
+@pytest_asyncio.fixture
+async def seeded_user(db_engine) -> dict:
+    """Creates a tenant + developer user. Uses its own session and commits."""
+    factory = async_sessionmaker(db_engine, expire_on_commit=False)
+    async with factory() as session:
+        tenant = Tenant(
+            name="Test Corp",
+            slug=f"test-corp-{uuid.uuid4().hex[:8]}",
+        )
+        session.add(tenant)
+        await session.flush()
+
+        user = User(
+            tenant_id=tenant.id,
+            email=f"dev-{uuid.uuid4().hex[:8]}@test-corp.com",
+            hashed_password=hash_password("secret123"),
+        )
+        session.add(user)
+        await session.flush()
+
+        role = await session.scalar(select(Role).where(Role.name == "developer"))
+        assert role is not None, "developer role not found — check migration 002 seeds roles"
+
+        session.add(UserRole(user_id=user.id, tenant_id=tenant.id, role_id=role.id))
+        await session.commit()
+
+        return {
+            "id": str(user.id),
+            "email": user.email,
+            "password": "secret123",
+            "tenant_slug": tenant.slug,
+            "tenant_id": str(tenant.id),
+        }
+
+
+@pytest_asyncio.fixture
+async def client(db_engine) -> AsyncClient:
+    """HTTP client with get_db overridden to create fresh sessions from the test engine."""
+    from src.database import get_db
+
+    async def override_get_db():
+        factory = async_sessionmaker(db_engine, expire_on_commit=False)
+        async with factory() as session:
+            try:
+                yield session
+            except Exception:
+                await session.rollback()
+                raise
+
+    app.dependency_overrides[get_db] = override_get_db
+    try:
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+            yield c
+    finally:
+        app.dependency_overrides.pop(get_db, None)
