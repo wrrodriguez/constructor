@@ -17,7 +17,11 @@ class Base(DeclarativeBase):
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
     """Sesión de DB sin tenant scope. Usar solo en login y operaciones de super admin."""
     async with AsyncSessionFactory() as session:
-        yield session
+        try:
+            yield session
+        except Exception:
+            await session.rollback()
+            raise
 
 
 async def get_tenant_db(tenant_id: str) -> AsyncGenerator[AsyncSession, None]:
@@ -31,6 +35,9 @@ async def get_tenant_db(tenant_id: str) -> AsyncGenerator[AsyncSession, None]:
         )
         try:
             yield session
+        except Exception:
+            await session.rollback()
+            raise
         finally:
             try:
                 await session.execute(text("RESET app.current_tenant"))

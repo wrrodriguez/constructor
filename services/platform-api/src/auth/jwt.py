@@ -23,7 +23,7 @@ def decode_access_token(token: str) -> dict[str, Any]:
             token,
             settings.jwt_public_key,
             algorithms=[ALGORITHM],
-            options={"require": ["exp", "sub"]},
+            options={"require": ["exp", "sub", "tenant_id"]},
         )
     except ExpiredSignatureError:
         raise ValueError("Token expired")

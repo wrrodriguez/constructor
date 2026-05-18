@@ -4,8 +4,10 @@ from unittest.mock import patch
 
 from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.hazmat.primitives import serialization
+from httpx import AsyncClient, ASGITransport
 
 from src.auth.jwt import create_access_token, decode_access_token
+from src.main import app
 
 
 def _generate_key_pair():
@@ -62,3 +64,19 @@ def test_token_signed_with_wrong_key_raises(rsa_key_pair):
         token = create_access_token(payload, expires_delta=timedelta(minutes=15))
         with pytest.raises(ValueError, match="Invalid token"):
             decode_access_token(token)
+
+
+@pytest.fixture
+async def client():
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+        yield c
+
+
+@pytest.mark.asyncio
+async def test_login_invalid_credentials(client):
+    response = await client.post("/auth/login", json={
+        "email": "nobody@example.com",
+        "password": "wrong",
+        "tenant_slug": "nonexistent"
+    })
+    assert response.status_code == 401
