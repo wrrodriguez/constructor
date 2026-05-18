@@ -22,6 +22,14 @@ def create_app() -> FastAPI:
     from src.auth.router import router as auth_router
     app.include_router(auth_router)
 
+    from src.auth.dependencies import get_current_user
+    from src.auth.schemas import CurrentUser
+    from fastapi import Depends
+
+    @app.get("/users/me")
+    async def me(current_user: CurrentUser = Depends(get_current_user)) -> CurrentUser:
+        return current_user
+
     return app
 
 

@@ -80,3 +80,9 @@ async def test_login_invalid_credentials(client):
         "tenant_slug": "nonexistent"
     })
     assert response.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_protected_endpoint_without_token(client):
+    response = await client.get("/users/me")
+    assert response.status_code == 401
