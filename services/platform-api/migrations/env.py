@@ -8,6 +8,8 @@ from src.database import Base
 import src.tenants.models
 import src.users.models
 import src.rbac.models
+import src.audit.models
+import src.workflows.models
 
 config = context.config
 if config.config_file_name is not None:

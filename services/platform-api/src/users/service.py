@@ -6,6 +6,7 @@ from src.users.models import User
 from src.rbac.models import Role, UserRole
 from src.auth.service import hash_password
 from src.users.schemas import UserCreate
+from src.audit.service import log_action
 
 
 async def create_user(
@@ -24,6 +25,13 @@ async def create_user(
     db.add(UserRole(user_id=user.id, tenant_id=tenant_id, role_id=role.id))
     await db.flush()
     await db.refresh(user)
+    await log_action(
+        db,
+        tenant_id=tenant_id,
+        action="user.created",
+        resource_type="user",
+        resource_id=str(user.id),
+    )
     return user
 
 
