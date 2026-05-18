@@ -22,13 +22,10 @@ def create_app() -> FastAPI:
     from src.auth.router import router as auth_router
     app.include_router(auth_router)
 
-    from src.auth.dependencies import get_current_user
-    from src.auth.schemas import CurrentUser
-    from fastapi import Depends
-
-    @app.get("/users/me")
-    async def me(current_user: CurrentUser = Depends(get_current_user)) -> CurrentUser:
-        return current_user
+    from src.tenants.router import router as tenants_router
+    from src.users.router import router as users_router
+    app.include_router(tenants_router)
+    app.include_router(users_router)
 
     return app
 
