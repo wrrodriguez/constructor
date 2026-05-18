@@ -63,11 +63,13 @@ def upgrade() -> None:
         'refresh_tokens',
         sa.Column('id', postgresql.UUID(as_uuid=True), nullable=False),
         sa.Column('user_id', postgresql.UUID(as_uuid=True), nullable=False),
+        sa.Column('tenant_id', postgresql.UUID(as_uuid=True), nullable=False),
         sa.Column('token_hash', sa.String(255), nullable=False),
         sa.Column('expires_at', sa.DateTime(), nullable=False),
         sa.Column('revoked', sa.Boolean(), nullable=False, server_default=sa.text('false')),
         sa.Column('created_at', sa.DateTime(), server_default=sa.text('now()'), nullable=False),
         sa.ForeignKeyConstraint(['user_id'], ['users.id']),
+        sa.ForeignKeyConstraint(['tenant_id'], ['tenants.id']),
         sa.PrimaryKeyConstraint('id'),
         sa.UniqueConstraint('token_hash'),
     )
