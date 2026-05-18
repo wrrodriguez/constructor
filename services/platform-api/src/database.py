@@ -1,4 +1,5 @@
 # src/database.py
+from collections.abc import AsyncGenerator
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
 from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy import text
@@ -13,15 +14,15 @@ class Base(DeclarativeBase):
     pass
 
 
-async def get_db():
-    """FastAPI dependency: sesión de DB sin tenant (solo para auth y super admin)."""
+async def get_db() -> AsyncGenerator[AsyncSession, None]:
+    """Sesión de DB sin tenant scope. Usar solo en login y operaciones de super admin."""
     async with AsyncSessionFactory() as session:
         yield session
 
 
-async def get_tenant_db(tenant_id: str):
-    """FastAPI dependency: sesión de DB con tenant_id inyectado en la sesión PostgreSQL.
-    RLS usa este valor para filtrar todas las queries automáticamente.
+async def get_tenant_db(tenant_id: str) -> AsyncGenerator[AsyncSession, None]:
+    """Lower-level session factory — use get_scoped_db from auth/dependencies.py in authenticated endpoints.
+    Injects tenant_id into the PostgreSQL session so Row-Level Security policies filter all queries automatically.
     """
     async with AsyncSessionFactory() as session:
         await session.execute(
@@ -31,4 +32,7 @@ async def get_tenant_db(tenant_id: str):
         try:
             yield session
         finally:
-            await session.execute(text("RESET app.current_tenant"))
+            try:
+                await session.execute(text("RESET app.current_tenant"))
+            except Exception:
+                pass
