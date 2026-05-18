@@ -1,0 +1,74 @@
+# .github/workflows/platform-api-ci.yml
+name: Platform API CI
+
+on:
+  push:
+    paths:
+      - "services/platform-api/**"
+  pull_request:
+    paths:
+      - "services/platform-api/**"
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: services/platform-api
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: pip install -e ".[dev]" psycopg2-binary
+
+      - name: Generate RSA keys for tests
+        run: |
+          mkdir -p keys
+          openssl genrsa -out keys/private.pem 4096
+          openssl rsa -in keys/private.pem -pubout -out keys/public.pem
+
+      - name: Run tests (unit only)
+        run: python -m pytest tests/ -v -m "not integration" --cov=src --cov-report=xml --cov-fail-under=50
+        env:
+          DATABASE_URL: postgresql+asyncpg://unused:unused@localhost:5432/unused
+          REDIS_URL: redis://localhost:6379/0
+          JWT_PRIVATE_KEY_PATH: ./keys/private.pem
+          JWT_PUBLIC_KEY_PATH: ./keys/public.pem
+          ENVIRONMENT: test
+          CORS_ALLOWED_ORIGINS: '["http://localhost:4200"]'
+
+      - name: Security scan — Bandit
+        run: |
+          pip install bandit
+          bandit -r src/ -ll
+
+      - name: Dependency audit
+        run: |
+          pip install pip-audit
+          pip-audit
+
+  lint:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: services/platform-api
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Install ruff
+        run: pip install ruff
+
+      - name: Lint
+        run: ruff check src/ tests/
