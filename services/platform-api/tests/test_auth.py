@@ -73,6 +73,7 @@ async def client():
 
 
 @pytest.mark.asyncio
+@pytest.mark.integration
 async def test_login_invalid_credentials(client):
     response = await client.post("/auth/login", json={
         "email": "nobody@example.com",
@@ -83,6 +84,7 @@ async def test_login_invalid_credentials(client):
 
 
 @pytest.mark.asyncio
+@pytest.mark.integration
 async def test_protected_endpoint_without_token(client):
     response = await client.get("/users/me")
     assert response.status_code == 401

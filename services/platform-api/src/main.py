@@ -27,6 +27,9 @@ def create_app() -> FastAPI:
     app.include_router(tenants_router)
     app.include_router(users_router)
 
+    from src.workflows.router import router as workflows_router
+    app.include_router(workflows_router)
+
     return app
 
 
