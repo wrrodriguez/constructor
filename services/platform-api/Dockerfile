@@ -1,6 +1,8 @@
 FROM python:3.12-slim AS base
 WORKDIR /app
-RUN pip install hatch
+RUN pip install hatch && \
+    addgroup --system appgroup && \
+    adduser --system --ingroup appgroup appuser
 
 FROM base AS development
 COPY pyproject.toml .
@@ -11,4 +13,5 @@ FROM base AS production
 COPY pyproject.toml .
 RUN pip install .
 COPY src ./src
+USER appuser
 CMD ["uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8000"]
