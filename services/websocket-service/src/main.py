@@ -64,7 +64,7 @@ async def join_execution(sid, data):
         await sio.emit("error", {"code": 403, "message": "Forbidden"}, to=sid)
         return
 
-    sio.enter_room(sid, execution_id)
+    await sio.enter_room(sid, execution_id)
     logger.info("Client %s joined room %s", sid, execution_id)
 
 
@@ -72,7 +72,7 @@ async def join_execution(sid, data):
 async def leave_execution(sid, data):
     execution_id = data.get("execution_id") if isinstance(data, dict) else None
     if execution_id:
-        sio.leave_room(sid, execution_id)
+        await sio.leave_room(sid, execution_id)
         logger.info("Client %s left room %s", sid, execution_id)
 
 
