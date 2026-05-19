@@ -1,6 +1,5 @@
 # tests/test_events.py
 import uuid
-import pytest
 from src.events import AgentTask, AgentResult
 
 

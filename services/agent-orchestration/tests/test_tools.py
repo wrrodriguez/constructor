@@ -1,7 +1,10 @@
 # tests/test_tools.py
 import pytest
+from unittest.mock import AsyncMock, patch, MagicMock
 from src.tools.registry import ToolRegistry
 from src.tools.base import BaseTool
+from src.tools.http_generic import HttpGenericTool
+from src.tools.sql_query import SqlQueryTool, _is_select_only
 
 
 class FakeTool(BaseTool):
@@ -50,13 +53,8 @@ async def test_tool_execute():
     assert result == {"result": "hello"}
 
 
+
 # --- http_generic ---
-
-import ipaddress
-from unittest.mock import AsyncMock, patch, MagicMock
-from src.tools.http_generic import HttpGenericTool
-from src.tools.sql_query import SqlQueryTool, _is_select_only
-
 
 @pytest.mark.asyncio
 async def test_http_generic_blocks_private_ip():

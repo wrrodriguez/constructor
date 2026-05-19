@@ -1,4 +1,3 @@
-import pytest
 from src.rbac.permissions import Permission, ROLE_PERMISSIONS, has_permission
 
 

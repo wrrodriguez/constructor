@@ -3,13 +3,12 @@ from collections.abc import AsyncGenerator
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
 from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy import text
+from redis.asyncio import Redis as AsyncRedis
 from src.config import settings
 
 
 engine = create_async_engine(settings.database_url, echo=False)
 AsyncSessionFactory = async_sessionmaker(engine, expire_on_commit=False)
-
-from redis.asyncio import Redis as AsyncRedis
 
 _redis_client: AsyncRedis | None = None
 

@@ -32,7 +32,7 @@ async def main() -> None:
     long_term = LongTermMemory(engine)
     consumer = RedisConsumer(redis, runner, publisher, long_term)
 
-    server = uvicorn.Server(uvicorn.Config(app, host="0.0.0.0", port=8001, log_level="info"))
+    server = uvicorn.Server(uvicorn.Config(app, host="0.0.0.0", port=8001, log_level="info"))  # nosec B104 — container service
 
     await asyncio.gather(server.serve(), consumer.start())
 

@@ -7,7 +7,7 @@ from unittest.mock import AsyncMock, MagicMock
 from testcontainers.redis import RedisContainer
 from redis.asyncio import Redis
 from src.events import AgentTask, AgentResult
-from src.consumer.redis_consumer import RedisConsumer, TASK_STREAM, CONSUMER_GROUP
+from src.consumer.redis_consumer import RedisConsumer, TASK_STREAM
 from src.publisher.result_publisher import ResultPublisher, RESULT_STREAM
 
 

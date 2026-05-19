@@ -1,5 +1,4 @@
 # tests/test_model_router.py
-import pytest
 from src.router.model_router import ModelRouter, ROUTING_TABLE, FALLBACK_CHAIN
 
 

@@ -179,7 +179,6 @@ async def e2e_client(db_engine, db_redis):
 async def seeded_workflow_definition(db_engine, seeded_user) -> uuid.UUID:
     """Crea ProcessDefinition con un agent step para tests e2e."""
     from src.workflows.models import ProcessDefinition
-    from sqlalchemy import text
 
     factory = async_sessionmaker(db_engine, expire_on_commit=False)
     async with factory() as session:

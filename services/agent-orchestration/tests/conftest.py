@@ -1,6 +1,5 @@
 # tests/conftest.py
 import pytest
-import pytest_asyncio
 import uuid
 from unittest.mock import AsyncMock, MagicMock
 from langchain_core.messages import AIMessage

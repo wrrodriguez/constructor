@@ -117,10 +117,6 @@ async def test_executor_dispatches_agent_step():
         ]
 
         async def mock_get(model, pk):
-            if hasattr(model, "__name__"):
-                name = model.__name__
-            else:
-                name = model.__tablename__ if hasattr(model, "__tablename__") else str(model)
             if "ProcessExecution" in str(model):
                 return mock_execution
             return mock_definition

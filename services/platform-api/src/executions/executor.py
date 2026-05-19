@@ -4,7 +4,7 @@ import uuid
 import logging
 from datetime import datetime, timezone
 from sqlalchemy.ext.asyncio import AsyncSession
-from src.workflows.models import ProcessDefinition, ProcessExecution
+from src.workflows.models import ProcessExecution
 from src.executions.condition import evaluate_condition
 from src.executions.transform import apply_transform
 from src.executions.events import AgentTask
@@ -47,7 +47,7 @@ async def execute_workflow(
     db: AsyncSession,
 ) -> None:
     """Main workflow execution loop. Runs as an asyncio.Task."""
-    from src.workflows.models import ProcessExecution, ProcessDefinition
+    from src.workflows.models import ProcessDefinition
 
     execution = await db.get(ProcessExecution, execution_id)
     definition = await db.get(ProcessDefinition, process_id)
