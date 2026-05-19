@@ -50,7 +50,7 @@ async def _run_workflow(
     from sqlalchemy import text
     async with AsyncSessionFactory() as db:
         await db.execute(
-            text("SET app.current_tenant = :tid"),
+            text("SELECT set_config('app.current_tenant', :tid, false)"),
             {"tid": str(tenant_id)},
         )
         await execute_workflow(execution_id, process_id, tenant_id, db)

@@ -127,6 +127,55 @@ async def db_redis(redis_container):
 
 
 @pytest_asyncio.fixture
+async def e2e_client(db_engine, db_redis):
+    """HTTP client que parchea Redis y DB para tests e2e.
+
+    ASGITransport no dispara el lifespan de FastAPI, así que arrancamos
+    el result consumer manualmente para que los Futures se resuelvan.
+    """
+    import asyncio as _asyncio
+    import src.database as db_module
+    import src.executions.service as service_module
+    from src.executions.redis_consumer import start_result_consumer
+
+    # Patch Redis so executor and result consumer use the test container
+    original_redis = db_module._redis_client
+    db_module._redis_client = db_redis
+
+    test_factory = async_sessionmaker(db_engine, expire_on_commit=False)
+    original_factory = service_module.AsyncSessionFactory
+    service_module.AsyncSessionFactory = test_factory
+
+    from src.database import get_db
+
+    async def override_get_db():
+        factory = async_sessionmaker(db_engine, expire_on_commit=False)
+        async with factory() as session:
+            try:
+                yield session
+            except Exception:
+                await session.rollback()
+                raise
+
+    app.dependency_overrides[get_db] = override_get_db
+
+    # Start result consumer manually (ASGITransport doesn't fire lifespan)
+    consumer_task = _asyncio.create_task(start_result_consumer())
+    try:
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+            yield c
+    finally:
+        consumer_task.cancel()
+        try:
+            await consumer_task
+        except _asyncio.CancelledError:
+            pass
+        app.dependency_overrides.pop(get_db, None)
+        db_module._redis_client = original_redis
+        service_module.AsyncSessionFactory = original_factory
+
+
+@pytest_asyncio.fixture
 async def seeded_workflow_definition(db_engine, seeded_user) -> uuid.UUID:
     """Crea ProcessDefinition con un agent step para tests e2e."""
     from src.workflows.models import ProcessDefinition

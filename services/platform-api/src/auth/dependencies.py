@@ -50,27 +50,26 @@ async def get_current_user(
 
 async def get_scoped_db(
     current_user: CurrentUser = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
 ) -> AsyncGenerator[AsyncSession, None]:
     """Tenant-scoped DB session with RLS. Use in all authenticated endpoints.
 
-    Note: Uses unscoped AsyncSessionFactory directly to ensure proper exception/rollback handling.
+    Depends on get_db so test overrides propagate automatically.
     The tenant scope is injected via SET app.current_tenant before yielding.
     """
     from sqlalchemy import text as sql_text
-    from src.database import AsyncSessionFactory
 
-    async with AsyncSessionFactory() as session:
-        await session.execute(
-            sql_text("SET app.current_tenant = :tenant_id"),
-            {"tenant_id": str(current_user.tenant_id)},
-        )
+    await db.execute(
+        sql_text("SELECT set_config('app.current_tenant', :tenant_id, false)"),
+        {"tenant_id": str(current_user.tenant_id)},
+    )
+    try:
+        yield db
+    except Exception:
+        await db.rollback()
+        raise
+    finally:
         try:
-            yield session
+            await db.execute(sql_text("SELECT set_config('app.current_tenant', '', false)"))
         except Exception:
-            await session.rollback()
-            raise
-        finally:
-            try:
-                await session.execute(sql_text("RESET app.current_tenant"))
-            except Exception:
-                pass
+            pass
