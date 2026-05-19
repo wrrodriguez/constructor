@@ -7,6 +7,15 @@ from unittest.mock import AsyncMock, patch
 from src.consumer.redis_consumer import StatusConsumer, STATUS_STREAM
 
 
+@pytest_asyncio.fixture(autouse=True)
+async def clean_stream(redis_client):
+    yield
+    try:
+        await redis_client.delete(STATUS_STREAM)
+    except Exception:
+        pass
+
+
 @pytest.mark.asyncio
 async def test_consumer_emits_execution_update_to_room(redis_client):
     """Publicar en el stream → sio.emit() con el evento correcto a la room."""
