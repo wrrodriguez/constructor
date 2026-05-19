@@ -1,0 +1,62 @@
+# .github/workflows/agent-orchestration-ci.yml
+name: Agent Orchestration CI
+
+on:
+  push:
+    paths:
+      - "services/agent-orchestration/**"
+  pull_request:
+    paths:
+      - "services/agent-orchestration/**"
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: services/agent-orchestration
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: pip install -e ".[dev]" psycopg2-binary
+
+      - name: Run tests
+        run: pytest tests/ -v --cov=src --cov-report=xml --cov-fail-under=80
+        env:
+          DATABASE_URL: postgresql+asyncpg://test:test@localhost:5432/test
+          REDIS_URL: redis://localhost:6379/0
+          ANTHROPIC_API_KEY: ""
+          OPENAI_API_KEY: ""
+          GOOGLE_API_KEY: ""
+
+      - name: Security scan — Bandit
+        run: |
+          pip install bandit
+          bandit -r src/ -ll
+
+      - name: Dependency audit
+        run: |
+          pip install pip-audit
+          pip-audit
+
+  lint:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: services/agent-orchestration
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install ruff
+        run: pip install ruff
+      - name: Lint
+        run: ruff check src/ tests/

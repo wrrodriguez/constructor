@@ -9,6 +9,17 @@ from src.config import settings
 engine = create_async_engine(settings.database_url, echo=False)
 AsyncSessionFactory = async_sessionmaker(engine, expire_on_commit=False)
 
+from redis.asyncio import Redis as AsyncRedis
+
+_redis_client: AsyncRedis | None = None
+
+
+async def get_redis() -> AsyncRedis:
+    global _redis_client
+    if _redis_client is None:
+        _redis_client = AsyncRedis.from_url(settings.redis_url, decode_responses=True)
+    return _redis_client
+
 
 class Base(DeclarativeBase):
     pass

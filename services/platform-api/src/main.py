@@ -1,7 +1,21 @@
 # src/main.py
+import asyncio
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from src.config import settings
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    from src.executions.redis_consumer import start_result_consumer
+    task = asyncio.create_task(start_result_consumer())
+    yield
+    task.cancel()
+    try:
+        await task
+    except asyncio.CancelledError:
+        pass
 
 
 def create_app() -> FastAPI:
@@ -9,6 +23,7 @@ def create_app() -> FastAPI:
         title="Constructor Platform API",
         version="0.1.0",
         docs_url="/docs" if settings.environment != "production" else None,
+        lifespan=lifespan,
     )
 
     app.add_middleware(
@@ -29,6 +44,9 @@ def create_app() -> FastAPI:
 
     from src.workflows.router import router as workflows_router
     app.include_router(workflows_router)
+
+    from src.executions.router import router as executions_router
+    app.include_router(executions_router)
 
     return app
 

@@ -49,5 +49,27 @@ services:
         condition: service_healthy
     command: uvicorn src.main:app --host 0.0.0.0 --port 8000 --reload
 
+  agent-orchestration:
+    build:
+      context: ./services/agent-orchestration
+      target: development
+    ports:
+      - "8001:8001"
+    environment:
+      DATABASE_URL: postgresql+asyncpg://constructor:constructor_dev@postgres:5432/constructor_dev
+      REDIS_URL: redis://:redis_dev_password@redis:6379/0
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      GOOGLE_API_KEY: ${GOOGLE_API_KEY:-}
+      ENVIRONMENT: development
+    volumes:
+      - ./services/agent-orchestration:/app
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: python -m src.worker
+
 volumes:
   postgres_data:

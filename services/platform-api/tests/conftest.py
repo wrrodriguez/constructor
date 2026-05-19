@@ -18,6 +18,13 @@ from src.users.models import User
 
 
 @pytest.fixture(scope="session")
+def redis_container():
+    from testcontainers.redis import RedisContainer
+    with RedisContainer("redis:7-alpine") as r:
+        yield r
+
+
+@pytest.fixture(scope="session")
 def postgres_container():
     from testcontainers.postgres import PostgresContainer
     with PostgresContainer("postgres:16-alpine") as postgres:
@@ -104,3 +111,50 @@ async def client(db_engine) -> AsyncClient:
             yield c
     finally:
         app.dependency_overrides.pop(get_db, None)
+
+
+@pytest_asyncio.fixture
+async def db_redis(redis_container):
+    """Redis client conectado al TestContainer para tests e2e."""
+    from redis.asyncio import Redis as AsyncRedis
+    client = AsyncRedis(
+        host=redis_container.get_container_host_ip(),
+        port=int(redis_container.get_exposed_port(6379)),
+        decode_responses=True,
+    )
+    yield client
+    await client.aclose()
+
+
+@pytest_asyncio.fixture
+async def seeded_workflow_definition(db_engine, seeded_user) -> uuid.UUID:
+    """Crea ProcessDefinition con un agent step para tests e2e."""
+    from src.workflows.models import ProcessDefinition
+    from sqlalchemy import text
+
+    factory = async_sessionmaker(db_engine, expire_on_commit=False)
+    async with factory() as session:
+        tenant = await session.scalar(
+            select(Tenant).where(Tenant.slug == seeded_user["tenant_slug"])
+        )
+        user = await session.scalar(
+            select(User).where(User.email == seeded_user["email"])
+        )
+
+        defn = ProcessDefinition(
+            tenant_id=tenant.id,
+            name="E2E Test Workflow",
+            trigger_config={"type": "manual"},
+            steps=[{
+                "id": "step_agent",
+                "type": "agent",
+                "config": {"task_type": "default", "prompt": "Say hello", "tools_allowed": []},
+                "next": None,
+                "timeout_seconds": 30,
+            }],
+            on_error="stop",
+            created_by=user.id,
+        )
+        session.add(defn)
+        await session.commit()
+        return defn.id

@@ -10,6 +10,7 @@ import src.users.models
 import src.rbac.models
 import src.audit.models
 import src.workflows.models
+import src.executions.models  # noqa — registers AgentExecutionLog with Base.metadata
 
 config = context.config
 if config.config_file_name is not None:
