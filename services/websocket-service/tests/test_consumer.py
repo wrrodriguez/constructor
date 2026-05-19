@@ -27,6 +27,9 @@ async def test_consumer_emits_execution_update_to_room(redis_client):
         "context": {"result": "ok"},
         "timestamp": "2026-05-19T10:00:00+00:00",
     }
+    # Create the group first (id="0" so messages published next are visible),
+    # then publish. Consumer.start() will hit BUSYGROUP and ignore it.
+    await redis_client.xgroup_create(STATUS_STREAM, "websocket-service", id="0", mkstream=True)
     await redis_client.xadd(STATUS_STREAM, {"data": json.dumps(event)})
 
     with patch("src.consumer.redis_consumer.sio") as mock_sio:
@@ -57,6 +60,9 @@ async def test_consumer_acks_message_even_on_emit_failure(redis_client):
         "context": {},
         "timestamp": "2026-05-19T10:00:00+00:00",
     }
+    # Create the group first (id="0" so messages published next are visible),
+    # then publish. Consumer.start() will hit BUSYGROUP and ignore it.
+    await redis_client.xgroup_create(STATUS_STREAM, "websocket-service", id="0", mkstream=True)
     await redis_client.xadd(STATUS_STREAM, {"data": json.dumps(event)})
 
     with patch("src.consumer.redis_consumer.sio") as mock_sio:
@@ -77,6 +83,9 @@ async def test_consumer_acks_message_even_on_emit_failure(redis_client):
 @pytest.mark.asyncio
 async def test_consumer_skips_malformed_message(redis_client):
     """Mensajes malformados se ackean y no detienen el consumer."""
+    # Create the group first (id="0" so messages published next are visible),
+    # then publish. Consumer.start() will hit BUSYGROUP and ignore it.
+    await redis_client.xgroup_create(STATUS_STREAM, "websocket-service", id="0", mkstream=True)
     await redis_client.xadd(STATUS_STREAM, {"data": "not-valid-json"})
 
     with patch("src.consumer.redis_consumer.sio") as mock_sio:

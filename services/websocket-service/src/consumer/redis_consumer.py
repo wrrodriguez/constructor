@@ -20,7 +20,7 @@ class StatusConsumer:
 
     async def start(self) -> None:
         try:
-            await self._redis.xgroup_create(STATUS_STREAM, CONSUMER_GROUP, id="0", mkstream=True)
+            await self._redis.xgroup_create(STATUS_STREAM, CONSUMER_GROUP, id="$", mkstream=True)
         except Exception:
             pass  # group already exists
 

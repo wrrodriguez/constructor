@@ -16,7 +16,10 @@ async def main() -> None:
     server = uvicorn.Server(
         uvicorn.Config(app, host="0.0.0.0", port=settings.port, log_level="info")  # nosec B104
     )
-    await asyncio.gather(server.serve(), consumer.start())
+    try:
+        await asyncio.gather(server.serve(), consumer.start())
+    finally:
+        await redis.aclose()
 
 
 if __name__ == "__main__":

@@ -60,14 +60,14 @@ def token_missing_tenant() -> str:
     return make_token("tenant-111", "user-222", missing_tenant=True)
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="session")
 def redis_container():
     from testcontainers.redis import RedisContainer
     with RedisContainer("redis:7-alpine") as r:
         yield r
 
 
-@pytest_asyncio.fixture(scope="module")
+@pytest_asyncio.fixture(scope="session")
 async def redis_client(redis_container):
     from redis.asyncio import Redis
     client = Redis(

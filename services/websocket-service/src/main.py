@@ -12,7 +12,15 @@ logger = logging.getLogger(__name__)
 
 
 async def _get_execution_tenant(execution_id: str) -> str | None:
-    """Consulta DB para verificar a qué tenant pertenece la ejecución."""
+    """Query DB to verify which tenant owns the execution.
+
+    Note: This query runs without a tenant RLS context because it is used for
+    ownership verification (we don't know the tenant yet). The DB role used by
+    this service must have BYPASSRLS or be a superuser for this to work. In
+    development, the 'constructor' role has superuser privileges; production
+    deployments should use a dedicated service role with BYPASSRLS on
+    process_executions.
+    """
     async with AsyncSessionFactory() as db:
         result = await db.execute(
             text("SELECT tenant_id FROM process_executions WHERE id = :id"),
