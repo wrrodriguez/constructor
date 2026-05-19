@@ -61,9 +61,31 @@ services:
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       GOOGLE_API_KEY: ${GOOGLE_API_KEY:-}
+      USE_STUB_MODEL: ${USE_STUB_MODEL:-false}
       ENVIRONMENT: development
     volumes:
       - ./services/agent-orchestration:/app
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: python -m src.worker
+
+  websocket-service:
+    build:
+      context: ./services/websocket-service
+      target: development
+    ports:
+      - "8002:8002"
+    environment:
+      DATABASE_URL: postgresql+asyncpg://constructor:constructor_dev@postgres:5432/constructor_dev
+      REDIS_URL: redis://:redis_dev_password@redis:6379/0
+      JWT_PUBLIC_KEY_PATH: /app/keys/public.pem
+      ENVIRONMENT: development
+    volumes:
+      - ./services/websocket-service:/app
+      - ./keys:/app/keys
     depends_on:
       postgres:
         condition: service_healthy
