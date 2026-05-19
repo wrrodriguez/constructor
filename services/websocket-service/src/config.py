@@ -1,5 +1,4 @@
 # src/config.py
-from functools import cached_property
 from pathlib import Path
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -13,7 +12,7 @@ class Settings(BaseSettings):
     environment: str = "development"
     port: int = 8002
 
-    @cached_property
+    @property
     def jwt_public_key(self) -> str:
         return self.jwt_public_key_path.read_text()
 

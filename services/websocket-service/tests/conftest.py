@@ -21,6 +21,8 @@ _PUBLIC_PEM = _private_key.public_key().public_bytes(
 _pub_key_file = tempfile.NamedTemporaryFile(suffix=".pem", delete=False)
 _pub_key_file.write(_PUBLIC_PEM)
 _pub_key_file.close()
+import atexit
+atexit.register(os.unlink, _pub_key_file.name)
 
 # Configurar env vars antes de que pydantic-settings lea el entorno
 os.environ.setdefault("DATABASE_URL", "postgresql+asyncpg://test:test@localhost:5432/test")
