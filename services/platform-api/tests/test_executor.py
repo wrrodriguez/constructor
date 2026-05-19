@@ -97,7 +97,10 @@ async def test_executor_dispatches_agent_step():
     from src.executions.executor import execute_workflow
 
     mock_dispatch = AsyncMock(return_value={"text": "analysis result"})
-    with patch("src.executions.executor.dispatch_agent_step", mock_dispatch):
+    mock_redis = AsyncMock()
+    mock_redis.xadd = AsyncMock()
+    with patch("src.executions.executor.dispatch_agent_step", mock_dispatch), \
+         patch("src.executions.executor.get_redis", AsyncMock(return_value=mock_redis)):
         mock_execution = MagicMock()
         mock_execution.id = uuid.uuid4()
         mock_execution.tenant_id = uuid.uuid4()
