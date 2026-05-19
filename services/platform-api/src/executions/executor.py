@@ -1,5 +1,6 @@
 # src/executions/executor.py
 import asyncio
+import json
 import uuid
 import logging
 from datetime import datetime, timezone
@@ -14,6 +15,24 @@ from src.database import get_redis
 logger = logging.getLogger(__name__)
 
 TASK_STREAM = "constructor:agent.task.created"
+STATUS_CHANGED_STREAM = "constructor:execution.status.changed"
+
+
+async def _publish_status_change(execution: ProcessExecution) -> None:
+    """Publica cambio de estado al stream para el WebSocket Service. No lanza excepciones."""
+    try:
+        redis = await get_redis()
+        event = {
+            "execution_id": str(execution.id),
+            "tenant_id": str(execution.tenant_id),
+            "status": execution.status,
+            "current_step_id": execution.current_step_id,
+            "context": execution.context,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        }
+        await redis.xadd(STATUS_CHANGED_STREAM, {"data": json.dumps(event)})
+    except Exception as exc:
+        logger.warning("Failed to publish execution status change: %s", exc)
 
 
 async def dispatch_agent_step(
@@ -62,6 +81,7 @@ async def execute_workflow(
     execution.status = "running"
     execution.started_at = datetime.now(timezone.utc)
     await db.commit()
+    await _publish_status_change(execution)
 
     try:
         while current_step_id:
@@ -71,6 +91,7 @@ async def execute_workflow(
 
             execution.current_step_id = current_step_id
             await db.commit()
+            await _publish_status_change(execution)
 
             match step["type"]:
                 case "condition":
@@ -91,13 +112,16 @@ async def execute_workflow(
         execution.current_step_id = None
         execution.completed_at = datetime.now(timezone.utc)
         await db.commit()
+        await _publish_status_change(execution)
 
     except asyncio.TimeoutError:
         execution.status = "failed"
         execution.context = {**execution.context, "_error": f"Timeout on step '{execution.current_step_id}'"}
         await db.commit()
+        await _publish_status_change(execution)
     except Exception as exc:
         logger.error("Workflow execution failed: %s", exc)
         execution.status = "failed"
         execution.context = {**execution.context, "_error": str(exc)}
         await db.commit()
+        await _publish_status_change(execution)

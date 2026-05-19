@@ -134,3 +134,54 @@ async def test_executor_dispatches_agent_step():
 
     mock_dispatch.assert_called_once()
     assert mock_execution.status == "completed"
+
+
+@pytest.mark.asyncio
+async def test_executor_publishes_status_changed_events():
+    """execute_workflow() publica en constructor:execution.status.changed en cada transición."""
+    from src.executions.executor import execute_workflow
+
+    mock_redis = AsyncMock()
+    mock_redis.xadd = AsyncMock()
+    mock_dispatch = AsyncMock(return_value={"text": "result"})
+
+    with patch("src.executions.executor.dispatch_agent_step", mock_dispatch):
+        with patch("src.executions.executor.get_redis", AsyncMock(return_value=mock_redis)):
+            mock_execution = MagicMock()
+            mock_execution.id = uuid.uuid4()
+            mock_execution.tenant_id = uuid.uuid4()
+            mock_execution.context = {}
+            mock_execution.status = "pending"
+            mock_execution.current_step_id = None
+
+            mock_definition = MagicMock()
+            mock_definition.steps = [
+                {
+                    "id": "s1",
+                    "type": "agent",
+                    "config": {"task_type": "default", "prompt": "analyze"},
+                    "next": None,
+                    "timeout_seconds": 60,
+                }
+            ]
+
+            async def mock_get(model, pk):
+                if "ProcessExecution" in str(model):
+                    return mock_execution
+                return mock_definition
+
+            mock_db = AsyncMock(spec=AsyncSession)
+            mock_db.get = AsyncMock(side_effect=mock_get)
+            mock_db.commit = AsyncMock()
+
+            await execute_workflow(
+                mock_execution.id, uuid.uuid4(), mock_execution.tenant_id, mock_db,
+            )
+
+    # running + step_start + completed = at least 3 publishes
+    assert mock_redis.xadd.call_count >= 3
+    streams = [call.args[0] for call in mock_redis.xadd.call_args_list]
+    assert all(s == "constructor:execution.status.changed" for s in streams)
+    import json
+    last_data = json.loads(mock_redis.xadd.call_args_list[-1].args[1]["data"])
+    assert last_data["status"] == "completed"
