@@ -23,11 +23,11 @@ class LongTermMemory:
             await session.execute(
                 text("""
                     INSERT INTO agent_execution_logs
-                        (tenant_id, execution_id, step_id, task_id, model_used,
+                        (id, tenant_id, execution_id, step_id, task_id, model_used,
                          tokens_used, iterations, status)
                     VALUES
-                        (:tenant_id, :execution_id, :step_id, :task_id, :model_used,
-                         :tokens_used, :iterations, :status)
+                        (gen_random_uuid(), :tenant_id, :execution_id, :step_id, :task_id,
+                         :model_used, :tokens_used, :iterations, :status)
                 """),
                 {
                     "tenant_id": str(tenant_id),

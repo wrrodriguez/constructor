@@ -3,14 +3,14 @@ from langchain_core.language_models import BaseChatModel
 from src.config import settings
 
 ROUTING_TABLE: dict[str, str] = {
-    "code_analysis":  "claude-opus-4-6",
-    "security_scan":  "gpt-4o",
-    "summarization":  "claude-haiku-4-5-20251001",
-    "ocr_extraction": "gemini-1.5-pro",
-    "default":        "claude-sonnet-4-6",
+    "code_analysis":  "gemini-2.0-flash",
+    "security_scan":  "gemini-2.0-flash",
+    "summarization":  "gemini-2.0-flash",
+    "ocr_extraction": "gemini-2.0-flash",
+    "default":        "gemini-2.0-flash",
 }
 
-FALLBACK_CHAIN: list[str] = ["claude-sonnet-4-6", "gpt-4o", "gemini-1.5-flash"]
+FALLBACK_CHAIN: list[str] = ["gemini-2.0-flash", "gemini-2.0-flash-lite", "gemini-1.5-flash-latest"]
 
 
 class ModelRouter:
@@ -26,6 +26,9 @@ class ModelRouter:
         return self._instantiate(model_id)
 
     def _instantiate(self, model_id: str) -> BaseChatModel:
+        if settings.use_stub_model or model_id == "stub":
+            from src.router.stub_model import StubChatModel
+            return StubChatModel()
         if model_id.startswith("claude"):
             from langchain_anthropic import ChatAnthropic
             return ChatAnthropic(model=model_id, api_key=settings.anthropic_api_key)

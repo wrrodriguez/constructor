@@ -5,17 +5,17 @@ from src.router.model_router import ModelRouter, ROUTING_TABLE, FALLBACK_CHAIN
 def test_routing_code_analysis():
     router = ModelRouter()
     model_id = router._resolve_model_id("code_analysis", None)
-    assert model_id == "claude-opus-4-6"
+    assert model_id == "gemini-2.0-flash"
 
 
 def test_routing_security_scan():
     router = ModelRouter()
-    assert router._resolve_model_id("security_scan", None) == "gpt-4o"
+    assert router._resolve_model_id("security_scan", None) == "gemini-2.0-flash"
 
 
 def test_routing_summarization():
     router = ModelRouter()
-    assert router._resolve_model_id("summarization", None) == "claude-haiku-4-5-20251001"
+    assert router._resolve_model_id("summarization", None) == "gemini-2.0-flash"
 
 
 def test_routing_unknown_task_uses_default():
@@ -39,4 +39,4 @@ def test_last_model_used_updated():
     router._resolve_model_id("code_analysis", None)
     # last_model_used is only set by get_model (which instantiates), but
     # _resolve_model_id returns the id. Verify the routing table is correct.
-    assert "claude-opus-4-6" in ROUTING_TABLE.values()
+    assert "gemini-2.0-flash" in ROUTING_TABLE.values()
