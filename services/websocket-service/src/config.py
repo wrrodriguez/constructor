@@ -11,6 +11,7 @@ class Settings(BaseSettings):
     jwt_public_key_path: Path
     environment: str = "development"
     port: int = 8002
+    cors_allowed_origins: list[str] = ["*"]
 
     @property
     def jwt_public_key(self) -> str:

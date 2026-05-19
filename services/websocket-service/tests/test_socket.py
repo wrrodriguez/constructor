@@ -166,55 +166,23 @@ async def test_join_execution_missing_execution_id():
 
 @pytest.mark.asyncio
 async def test_two_clients_same_room_both_receive():
-    """Two sids join the same room → both appear as recipients of a broadcast.
-
-    AsyncTestClient is not available in this version of python-socketio, so we
-    verify delivery by:
-      1. Populating sio.manager.rooms directly (the same structure that
-         sio.enter_room uses internally) to register both sids.
-      2. Asserting sio.rooms(sid) reports each sid as being in the room.
-      3. Asserting sio.manager.get_participants(namespace, room) yields both
-         sids — this is exactly the set the server iterates when it executes
-         sio.emit(..., room="exec-shared").
-    """
-    from bidict import bidict
-
+    """Two sids in the same room both appear as get_participants result."""
     ns = "/"
     room = "exec-broadcast-test"
-    sid_a = "test-sid-a"
-    sid_b = "test-sid-b"
-    eio_a = "eio-test-a"
-    eio_b = "eio-test-b"
 
-    # ── Register both sids in the manager's internal rooms dict ──────────────
-    mgr = sio.manager
-    if ns not in mgr.rooms:
-        mgr.rooms[ns] = {}
-    if None not in mgr.rooms[ns]:
-        mgr.rooms[ns][None] = bidict()
-    if room not in mgr.rooms[ns]:
-        mgr.rooms[ns][room] = bidict()
-
-    mgr.rooms[ns][None][sid_a] = eio_a
-    mgr.rooms[ns][None][sid_b] = eio_b
-    mgr.rooms[ns][room][sid_a] = eio_a
-    mgr.rooms[ns][room][sid_b] = eio_b
-
+    # Connect both sids to the manager (public API); returns the generated sid
+    sid_a = await sio.manager.connect("eio-broadcast-a", ns)
+    sid_b = await sio.manager.connect("eio-broadcast-b", ns)
+    await sio.enter_room(sid_a, room)
+    await sio.enter_room(sid_b, room)
     try:
-        # ── Verify sio.rooms() sees both sids in the room ────────────────────
-        assert room in sio.rooms(sid_a), f"{sid_a} not found in room {room}: {sio.rooms(sid_a)}"
-        assert room in sio.rooms(sid_b), f"{sid_b} not found in room {room}: {sio.rooms(sid_b)}"
-
-        # ── Verify get_participants yields both sids (broadcast recipients) ──
-        # This is the exact method the server uses when sio.emit(..., room=room)
-        # is called, so confirming both sids appear here proves both would
-        # receive an execution_update broadcast.
-        participants = dict(mgr.get_participants(ns, room))
-        assert sid_a in participants, f"{sid_a} missing from broadcast recipients: {list(participants)}"
-        assert sid_b in participants, f"{sid_b} missing from broadcast recipients: {list(participants)}"
+        assert room in sio.rooms(sid_a)
+        assert room in sio.rooms(sid_b)
+        participants = {sid for sid, _ in sio.manager.get_participants(ns, room)}
+        assert sid_a in participants
+        assert sid_b in participants
     finally:
-        # ── Cleanup ──────────────────────────────────────────────────────────
-        mgr.rooms[ns][room].pop(sid_a, None)
-        mgr.rooms[ns][room].pop(sid_b, None)
-        mgr.rooms[ns][None].pop(sid_a, None)
-        mgr.rooms[ns][None].pop(sid_b, None)
+        await sio.leave_room(sid_a, room)
+        await sio.leave_room(sid_b, room)
+        await sio.manager.disconnect(sid_a, ns)
+        await sio.manager.disconnect(sid_b, ns)
