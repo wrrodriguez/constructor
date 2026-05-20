@@ -17,6 +17,7 @@ class ExecutionRead(BaseModel):
     current_step_id: str | None
     context: dict
     triggered_by: uuid.UUID | None
+    trigger_type: str
     started_at: datetime | None
     completed_at: datetime | None
     created_at: datetime
