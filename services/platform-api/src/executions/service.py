@@ -12,7 +12,8 @@ async def create_execution(
     db: AsyncSession,
     data: ExecutionCreate,
     tenant_id: uuid.UUID,
-    triggered_by: uuid.UUID,
+    triggered_by: uuid.UUID | None,
+    trigger_type: str = "manual",
 ) -> ProcessExecution:
     definition = await db.scalar(
         select(ProcessDefinition).where(
@@ -28,6 +29,7 @@ async def create_execution(
         process_definition_id=data.process_definition_id,
         context=data.context,
         triggered_by=triggered_by,
+        trigger_type=trigger_type,
         status="pending",
     )
     db.add(execution)
