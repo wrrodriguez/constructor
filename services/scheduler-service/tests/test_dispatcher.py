@@ -37,7 +37,7 @@ async def test_dispatch_skips_when_lock_not_acquired():
     tenant_id = uuid.uuid4()
 
     mock_redis = AsyncMock()
-    mock_redis.set = AsyncMock(return_value=None)  # lock NOT acquired (None = NX failed)
+    mock_redis.set = AsyncMock(return_value=False)  # lock NOT acquired (False = NX failed)
     mock_redis.delete = AsyncMock()
 
     with patch("src.dispatcher.httpx.AsyncClient") as mock_client_cls:
