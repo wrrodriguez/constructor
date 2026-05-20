@@ -39,6 +39,7 @@ services:
       JWT_PRIVATE_KEY_PATH: /app/keys/private.pem
       JWT_PUBLIC_KEY_PATH: /app/keys/public.pem
       ENVIRONMENT: development
+      INTERNAL_SECRET: internal_dev_secret
     volumes:
       - ./services/platform-api:/app
       - ./keys:/app/keys
@@ -92,6 +93,25 @@ services:
       redis:
         condition: service_healthy
     command: python -m src.worker
+
+  scheduler-service:
+    build:
+      context: ./services/scheduler-service
+      dockerfile: Dockerfile
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      platform-api:
+        condition: service_started
+    environment:
+      DATABASE_URL: postgresql+asyncpg://constructor:constructor_dev@postgres:5432/constructor_dev
+      REDIS_URL: redis://:redis_dev_password@redis:6379/0
+      PLATFORM_API_URL: http://platform-api:8000
+      INTERNAL_SECRET: internal_dev_secret
+      POLL_INTERVAL_SECONDS: "30"
+    restart: unless-stopped
 
 volumes:
   postgres_data:
