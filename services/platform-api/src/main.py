@@ -51,6 +51,9 @@ def create_app() -> FastAPI:
     from src.webhooks.router import router as webhooks_router
     app.include_router(webhooks_router)
 
+    from src.internal.router import router as internal_router
+    app.include_router(internal_router)
+
     return app
 
 

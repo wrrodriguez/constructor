@@ -15,6 +15,7 @@ class Settings(BaseSettings):
     jwt_refresh_token_expire_days: int = 7
     environment: str = "development"
     cors_allowed_origins: list[str] = ["http://localhost:4200"]
+    internal_secret: str = "internal_dev_secret"
 
     @cached_property
     def jwt_private_key(self) -> str:
