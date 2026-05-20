@@ -38,21 +38,31 @@ async def load_jobs(
     engine: AsyncEngine,
     redis: Redis,
 ) -> None:
-    """Read all scheduled workflows from DB and register them as APScheduler jobs.
+    """Sync APScheduler jobs with the DB — incremental, preserves existing job timers.
 
-    Clears existing jobs first (safe to call on reload).
+    - New workflows in DB → job added
+    - Workflows removed from DB → job removed
+    - Existing jobs kept as-is so their interval/cron timers are not reset
     """
     from src.dispatcher import dispatch
-
-    # Remove existing scheduled jobs before reloading
-    for job in scheduler.get_jobs():
-        job.remove()
 
     async with engine.begin() as conn:
         result = await conn.execute(_QUERY)
         rows = list(result)
 
+    db_ids = {str(row.id) for row in rows}
+    existing_ids = {job.id for job in scheduler.get_jobs()}
+
+    # Remove jobs no longer in DB
+    for job in scheduler.get_jobs():
+        if job.id not in db_ids:
+            job.remove()
+            logger.info("Removed job for workflow %s (no longer scheduled)", job.id)
+
+    # Add only new jobs (skip existing to preserve trigger timers)
     for row in rows:
+        if str(row.id) in existing_ids:
+            continue
         trigger = _build_trigger(row.trigger_config)
         if trigger is None:
             continue
